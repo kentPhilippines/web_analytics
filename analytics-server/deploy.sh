@@ -295,6 +295,41 @@ check_service() {
     fi
 }
 
+# 添加克隆代码函数
+clone_repository() {
+    print_info "克隆项目代码..."
+    
+    # 检查 git 是否安装
+    if ! command -v git &> /dev/null; then
+        print_info "安装 git..."
+        if command -v apt &> /dev/null; then
+            sudo apt update
+            sudo apt install -y git
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y git
+        else
+            print_error "无法安装 git，请手动安装"
+            exit 1
+        fi
+    fi
+    
+    # 如果目录已存在，先备份
+    if [ -d "$INSTALL_DIR" ]; then
+        BACKUP_DIR="${INSTALL_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+        print_info "备份现有代码到 $BACKUP_DIR"
+        mv "$INSTALL_DIR" "$BACKUP_DIR"
+    fi
+    
+    # 克隆代码
+    print_info "从 $REPO_URL 克隆代码..."
+    if ! git clone "$REPO_URL" "$INSTALL_DIR"; then
+        print_error "代码克隆失败"
+        exit 1
+    fi
+    
+    print_info "代码克隆成功"
+}
+
 # 修改主函数
 main() {
     print_info "开始部署统计服务..."
@@ -302,15 +337,18 @@ main() {
     # 检查 root 权限
     if [ "$EUID" -ne 0 ]; then
         print_error "请使用 root 权限运行此脚本"
-        print_info "使用: sudo ./deploy.sh"
+        print_info "使用: curl -sSL https://raw.githubusercontent.com/kentPhilippines/web_analytics/main/analytics-server/deploy.sh | sudo bash"
         exit 1
     fi
     
     # 获取域名
     get_domain
     
-    # 进入脚本所在目录
-    cd "$SCRIPT_DIR"
+    # 克隆代码
+    clone_repository
+    
+    # 进入项目目录
+    cd "$SCRIPT_DIR" || exit 1
     
     # 执行部署步骤
     check_requirements
@@ -327,6 +365,7 @@ main() {
     print_info "部署完成!"
     print_info "请根据 usage.html 中的说明配置统计脚本"
     print_info "SSL 证书将自动续期"
+    print_info "项目安装目录: $INSTALL_DIR"
 }
 
 # 执行主函数

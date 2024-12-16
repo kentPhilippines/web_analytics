@@ -295,8 +295,8 @@ server {
     location / {
         if (\$request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' '*';
-            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
-            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
+            add_header 'Access-Control-Allow-Methods' '*';  # 允许所有方法
+            add_header 'Access-Control-Allow-Headers' '*';  # 允许所有头部
             add_header 'Access-Control-Max-Age' 1728000;
             add_header 'Content-Type' 'text/plain charset=UTF-8';
             add_header 'Content-Length' 0;
@@ -314,17 +314,17 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
 
         add_header 'Access-Control-Allow-Origin' '*' always;
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
-        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+        add_header 'Access-Control-Allow-Methods' '*' always;  # 允许所有方法
+        add_header 'Access-Control-Allow-Headers' '*' always;  # 允许所有头部
+        add_header 'Access-Control-Expose-Headers' '*' always; # 允许所有响应头
     }
 
     # API 路径特别配置
     location /api/ {
         if (\$request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' '*';
-            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
-            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
+            add_header 'Access-Control-Allow-Methods' '*';  # 允许所有方法
+            add_header 'Access-Control-Allow-Headers' '*';  # 允许所有头部
             add_header 'Access-Control-Max-Age' 1728000;
             add_header 'Content-Type' 'text/plain charset=UTF-8';
             add_header 'Content-Length' 0;
@@ -339,17 +339,17 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
 
         add_header 'Access-Control-Allow-Origin' '*' always;
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
-        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+        add_header 'Access-Control-Allow-Methods' '*' always;  # 允许所有方法
+        add_header 'Access-Control-Allow-Headers' '*' always;  # 允许所有头部
+        add_header 'Access-Control-Expose-Headers' '*' always; # 允许所有响应头
     }
 
     # 静态文件缓存配置
     location /static/ {
         if (\$request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' '*';
-            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
-            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
+            add_header 'Access-Control-Allow-Methods' '*';  # 允许所有方法
+            add_header 'Access-Control-Allow-Headers' '*';  # 允许所有头部
             add_header 'Access-Control-Max-Age' 1728000;
             add_header 'Content-Type' 'text/plain charset=UTF-8';
             add_header 'Content-Length' 0;
@@ -360,9 +360,9 @@ server {
         expires 30d;
         add_header Cache-Control "public, no-transform";
         add_header 'Access-Control-Allow-Origin' '*' always;
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
-        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+        add_header 'Access-Control-Allow-Methods' '*' always;  # 允许所有方法
+        add_header 'Access-Control-Allow-Headers' '*' always;  # 允许所有头部
+        add_header 'Access-Control-Expose-Headers' '*' always; # 允许所有响应头
     }
 
     # 禁止访问 .git 和其他敏感目录
@@ -519,7 +519,7 @@ main() {
     start_service
     check_service
     
-    print_info "部署成!"
+    print_info "部署完成!"
     print_info "请根据 usage.html 中的说明配置统计脚本"
     print_info "SSL 证书将自动续期"
     print_info "项目安装目录: $INSTALL_DIR"

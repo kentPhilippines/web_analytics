@@ -57,8 +57,9 @@ app.use(express.json());
 // 配置 CORS
 const corsOptions = {
     origin: '*',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    methods: '*',                // 允许所有方法
+    allowedHeaders: '*',         // 允许所有头部
+    exposedHeaders: '*',         // 允许所有响应头
     credentials: true,
     maxAge: 86400,
     preflightContinue: true
@@ -69,8 +70,9 @@ app.use(cors(corsOptions));
 // 全局中间件添加 CORS 头
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Methods', '*');
+    res.header('Access-Control-Allow-Headers', '*');
+    res.header('Access-Control-Expose-Headers', '*');
     res.header('Access-Control-Allow-Credentials', 'true');
     
     // 处理 OPTIONS 请求

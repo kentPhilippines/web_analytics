@@ -3,36 +3,69 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const compression = require('compression');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// 数据库连接
-const db = new sqlite3.Database(path.join(__dirname, 'analytics.db'));
+// 数据库文件路径
+const DB_PATH = path.join(__dirname, 'analytics.db');
+
+// 检查并初始化数据库
+function initializeDatabase() {
+    const dbExists = fs.existsSync(DB_PATH);
+    
+    // 创建数据库连接
+    const db = new sqlite3.Database(DB_PATH);
+    
+    if (!dbExists) {
+        console.log('Creating new database...');
+        // 创建数据表
+        db.serialize(() => {
+            db.run(`CREATE TABLE IF NOT EXISTS visits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                pageUrl TEXT,
+                ip TEXT,
+                country TEXT,
+                region TEXT,
+                city TEXT,
+                userAgent TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`, (err) => {
+                if (err) {
+                    console.error('Error creating database table:', err);
+                } else {
+                    console.log('Database table created successfully');
+                }
+            });
+        });
+    } else {
+        console.log('Using existing database');
+    }
+    
+    return db;
+}
+
+// 初始化数据库
+const db = initializeDatabase();
 
 // 中间件
 app.use(compression()); // 启用 gzip 压缩
 app.use(express.json());
-app.use(cors()); // 允许跨域请求
-app.use(express.static(path.join(__dirname, 'public')));
 
-// 创建数据表
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS visits (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT,
-        pageUrl TEXT,
-        ip TEXT,
-        country TEXT,
-        region TEXT,
-        city TEXT,
-        userAgent TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-});
+// 配置 CORS
+app.use(cors({
+    origin: '*', // 允许所有来源
+    methods: ['GET', 'POST'], // 允许的 HTTP 方法
+    allowedHeaders: ['Content-Type', 'Authorization'], // 允许的请求头
+    credentials: true, // 允许发送凭证
+    maxAge: 86400 // CORS 预检请求的缓存时间（24小时）
+}));
 
-// 接收访问数据
-app.post('/api/analytics/sync', async (req, res) => {
+// 特别为 /api/analytics/sync 配置 CORS
+app.options('/api/analytics/sync', cors()); // 启用 CORS 预检请求
+app.post('/api/analytics/sync', cors(), async (req, res) => {
     try {
         const visit = req.body;
         
@@ -52,6 +85,11 @@ app.post('/api/analytics/sync', async (req, res) => {
         );
 
         stmt.finalize();
+        
+        // 设置 CORS 响应头
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Methods', 'POST');
+        res.header('Access-Control-Allow-Headers', 'Content-Type');
         
         res.status(200).json({ success: true });
     } catch (error) {
@@ -164,15 +202,19 @@ setInterval(() => {
     );
 }, 24 * 60 * 60 * 1000); // 每24小时执行一次
 
+// 优雅关闭
+process.on('SIGINT', () => {
+    db.close((err) => {
+        if (err) {
+            console.error('Error closing database:', err);
+        } else {
+            console.log('Database connection closed');
+        }
+        process.exit(0);
+    });
+});
+
 // 启动服务器
 app.listen(port, () => {
     console.log(`Analytics server running on port ${port}`);
-});
-
-// 优雅关闭
-process.on('SIGINT', () => {
-    db.close(() => {
-        console.log('Database connection closed');
-        process.exit(0);
-    });
 }); 

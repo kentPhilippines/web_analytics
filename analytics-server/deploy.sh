@@ -134,7 +134,7 @@ clone_repository() {
 check_requirements() {
     print_info "检查系统要求..."
     
-    # 检�� Nginx
+    # 检查 Nginx
     if ! command -v nginx &> /dev/null; then
         print_info "安装 Nginx..."
         if command -v apt &> /dev/null; then
@@ -216,12 +216,7 @@ setup_analytics_scripts() {
         exit 1
     }
 
-    # 替换域名配置
-    print_info "更新统计脚本配置..."
-    sed -i "s|apiEndpoint: '.*'|apiEndpoint: 'https://${DOMAIN}/api/analytics/sync'|" "$STATIC_DIR/analytics.js"
-
     print_info "统计脚本已安装到: $STATIC_DIR"
-    print_info "API 端点已更新为: https://${DOMAIN}/api/analytics/sync"
 }
 
 # 安装 certbot
@@ -245,7 +240,7 @@ setup_ssl() {
     print_info "配置 SSL 证书..."
     
     # 检查域名解析
-    print_info "检查域名解析..."
+    print_info "检查域���解析..."
     if ! host "$DOMAIN" &> /dev/null; then
         print_error "域名 $DOMAIN 解析失败"
         print_error "请确保域名已正确解析到此服务器"

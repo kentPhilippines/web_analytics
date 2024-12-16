@@ -8,11 +8,33 @@ NC='\033[0m' # No Color
 # 定义项目信息
 REPO_URL="https://github.com/kentPhilippines/web_analytics.git"
 INSTALL_DIR="/opt/web_analytics"
-SCRIPT_DIR="$INSTALL_DIR/analytics-server"
-PUBLIC_DIR="$SCRIPT_DIR/public"
+SERVER_DIR="$INSTALL_DIR/analytics-server"  # 服务器代码目录
+PUBLIC_DIR="$SERVER_DIR/public"
 STATIC_DIR="$PUBLIC_DIR/static"
 DOMAIN=""
 PORT=3000
+
+# 打印带颜色的信息
+print_info() {
+    echo -e "${GREEN}[INFO] $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR] $1${NC}"
+}
+
+# 添加域名输入函数
+get_domain() {
+    while true; do
+        read -p "请输入您的域名 (例如: analytics.yourdomain.com): " DOMAIN
+        if [[ -n "$DOMAIN" ]]; then
+            # 验证域名格式
+                break
+        else
+            print_error "域名不能为空"
+        fi
+    done
+}
 
 # 检查是否已安装 host 命令
 check_host_command() {
@@ -32,17 +54,11 @@ check_host_command() {
 
 # 创建必要的目录
 create_directories() {
-    print_info "创建必要的目录..."
-    sudo mkdir -p "$INSTALL_DIR"
-    sudo mkdir -p "$PUBLIC_DIR"
-    sudo mkdir -p "$STATIC_DIR"
-    sudo mkdir -p "$SCRIPT_DIR/logs"
-    
     # 设置目录权限
     sudo chown -R $(whoami):$(whoami) "$INSTALL_DIR"
 }
 
-# 修改 clone_repository 函数
+# 克隆代码
 clone_repository() {
     print_info "克隆项目代码..."
     
@@ -60,98 +76,65 @@ clone_repository() {
         fi
     fi
     
-    # 如果目录已存在，先备份
+    # 如果目录已存在
     if [ -d "$INSTALL_DIR" ]; then
-        BACKUP_DIR="${INSTALL_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
-        print_info "备份现有代码到 $BACKUP_DIR"
-        sudo mv "$INSTALL_DIR" "$BACKUP_DIR"
+        print_info "目录 $INSTALL_DIR 已存在"
+        
+        # 检查是否是git仓库
+        if [ -d "$INSTALL_DIR/.git" ]; then
+            print_info "更新已存在的代码..."
+            cd "$INSTALL_DIR"
+            
+            # 保存本地修改
+            git stash
+            
+            # 拉取最新代码
+            if git pull origin main; then
+                print_info "代码更新成功"
+                return 0
+            else
+                print_error "代码更新失败"
+                
+                # 如果更新失败，尝试强制重新克隆
+                print_info "尝试重新克隆..."
+                cd ..
+                BACKUP_DIR="${INSTALL_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+                sudo mv "$INSTALL_DIR" "$BACKUP_DIR"
+            fi
+        else
+            # 如果不是git仓库，备份并重新克隆
+            BACKUP_DIR="${INSTALL_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+            print_info "备份现有目录到 $BACKUP_DIR"
+            sudo mv "$INSTALL_DIR" "$BACKUP_DIR"
+        fi
     fi
     
-    # 创建目录结构
-    create_directories
     
     # 克隆代码
     print_info "从 $REPO_URL 克隆代码..."
     if ! git clone "$REPO_URL" "$INSTALL_DIR"; then
         print_error "代码克隆失败"
+        
+        # 如果有备份，恢复备份
+        if [ -d "$BACKUP_DIR" ]; then
+            print_info "恢复备份..."
+            sudo rm -rf "$INSTALL_DIR"
+            sudo mv "$BACKUP_DIR" "$INSTALL_DIR"
+            print_info "备份已恢复"
+            return 0
+        fi
+        
         exit 1
     fi
     
     print_info "代码克隆成功"
 }
 
-# 修改主函数
-main() {
-    print_info "开始部署统计服务..."
-    
-    # 检查 root 权限
-    if [ "$EUID" -ne 0 ]; then
-        print_error "请使用 root 权限运行此脚本"
-        print_info "使用: curl -sSL https://raw.githubusercontent.com/kentPhilippines/web_analytics/main/analytics-server/deploy.sh | sudo bash"
-        exit 1
-    fi
-    
-    # 安装基本工具
-    check_host_command
-    
-    # 获取域名
-    get_domain
-    
-    # 克隆代码
-    clone_repository
-    
-    # 进入项目目录
-    cd "$SCRIPT_DIR" || exit 1
-    
-    # 执行部署步骤
-    check_requirements
-    install_certbot
-    install_dependencies
-    setup_environment
-    setup_analytics_scripts
-    setup_nginx
-    setup_ssl
-    generate_usage_doc
-    start_service
-    check_service
-    
-    print_info "部署完成!"
-    print_info "请根据 usage.html 中的说明配置统计脚本"
-    print_info "SSL 证书将自动续期"
-    print_info "项目安装目录: $INSTALL_DIR"
-}
-
-# 打印带颜色的信息
-print_info() {
-    echo -e "${GREEN}[INFO] $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR] $1${NC}"
-}
-
-# 添加域名输入函数
-get_domain() {
-    while true; do
-        read -p "请输入您的域名 (例如: analytics.yourdomain.com): " DOMAIN
-        if [[ -n "$DOMAIN" ]]; then
-            # 验证域名格式
-            if [[ $DOMAIN =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$ ]]; then
-                break
-            else
-                print_error "请输入有效的域名"
-            fi
-        else
-            print_error "域名不能为空"
-        fi
-    done
-}
-
 # 检查必要的命令是否存在
 check_requirements() {
     print_info "检查系统要求..."
     
-    # 检查 Nginx
+    # 检�� Nginx
     if ! command -v nginx &> /dev/null; then
         print_info "安装 Nginx..."
         if command -v apt &> /dev/null; then
@@ -191,12 +174,33 @@ check_requirements() {
 # 安装依赖
 install_dependencies() {
     print_info "安装项目依赖..."
+    
+    # 进入服务器目录
+    cd "$SERVER_DIR" || exit 1
+    
+    if [ ! -f "package.json" ]; then
+        print_error "在 $SERVER_DIR 中未找到 package.json"
+        exit 1
+    fi
+    
     npm install
     
     if [ $? -ne 0 ]; then
         print_error "依赖安装失败"
         exit 1
     fi
+}
+
+# 配置环境
+setup_environment() {
+    print_info "配置环境..."
+    
+    # 创建必要的目录
+    mkdir -p logs
+    
+    # 设置环境变量
+    export PORT=${PORT:-3000}
+    export NODE_ENV=${NODE_ENV:-production}
 }
 
 # 配置统计脚本
@@ -206,18 +210,18 @@ setup_analytics_scripts() {
     # 创建静态资源目录
     mkdir -p "$STATIC_DIR"
     
-    # 复制统计脚本到静态目录
-    cp "$SCRIPT_DIR/analytics.js" "$STATIC_DIR/"
-    
-    # 生成统计脚本配置
-    cat > "$STATIC_DIR/analytics-config.js" << EOF
-window.analyticsConfig = {
-    apiEndpoint: '/api/analytics/sync',
-    retryTimes: 3
-};
-EOF
+    # 复制统计脚本
+    cp "$INSTALL_DIR/analytics.js" "$STATIC_DIR/" || {
+        print_error "复制 analytics.js 失败"
+        exit 1
+    }
+
+    # 替换域名配置
+    print_info "更新统计脚本配置..."
+    sed -i "s|apiEndpoint: '.*'|apiEndpoint: 'https://${DOMAIN}/api/analytics/sync'|" "$STATIC_DIR/analytics.js"
 
     print_info "统计脚本已安装到: $STATIC_DIR"
+    print_info "API 端点已更新为: https://${DOMAIN}/api/analytics/sync"
 }
 
 # 安装 certbot
@@ -246,7 +250,7 @@ setup_ssl() {
         print_error "域名 $DOMAIN 解析失败"
         print_error "请确保域名已正确解析到此服务器"
         exit 1
-    }
+    fi
 
     # 申请证书
     print_info "申请 SSL 证书..."
@@ -258,7 +262,7 @@ setup_ssl() {
     print_info "SSL 证书配置成功"
 }
 
-# 修改 Nginx 配置函数
+# 配置 Nginx
 setup_nginx() {
     print_info "配置 Nginx..."
     
@@ -311,7 +315,7 @@ EOF
     fi
 }
 
-# 修改生成使用说明的函数
+# 生成用说明
 generate_usage_doc() {
     print_info "生成使用说明..."
     
@@ -327,7 +331,6 @@ generate_usage_doc() {
     <h2>安装方法</h2>
     <p>在需要统计的页面添加以下代码：</p>
     <pre>
-&lt;script src="https://${DOMAIN}/static/analytics-config.js">&lt;/script>
 &lt;script src="https://${DOMAIN}/static/analytics.js">&lt;/script>
     </pre>
     
@@ -346,18 +349,6 @@ const locationStats = Analytics.getLocationStats();
 EOF
 }
 
-# 配置环境
-setup_environment() {
-    print_info "配置环境..."
-    
-    # 创建必要的目录
-    mkdir -p logs
-    
-    # 设置环境变量
-    export PORT=${PORT:-3000}
-    export NODE_ENV=${NODE_ENV:-production}
-}
-
 # 启动服务
 start_service() {
     print_info "启动服务..."
@@ -366,6 +357,14 @@ start_service() {
     if pm2 list | grep -q "analytics-server"; then
         print_info "停止旧的服务实例..."
         pm2 delete analytics-server
+    fi
+    
+    # 进入服务器目录
+    cd "$SERVER_DIR" || exit 1
+    
+    if [ ! -f "server.js" ]; then
+        print_error "在 $SERVER_DIR 中未找到 server.js"
+        exit 1
     fi
     
     # 使用 PM2 启动服务
@@ -387,7 +386,7 @@ start_service() {
     pm2 startup
 }
 
-# 修改检查服务状态的函数
+# 检查服务状态
 check_service() {
     print_info "检查服务状态..."
     
@@ -401,6 +400,47 @@ check_service() {
         print_error "服务可能未正常运行，请检查日志"
         pm2 logs analytics-server --lines 20
     fi
+}
+
+# 主函数
+main() {
+    print_info "开始部署统计服务..."
+    
+    # 检查 root 权限
+    if [ "$EUID" -ne 0 ]; then
+        print_error "请使用 root 权限运行此脚本"
+        print_info "使用: curl -sSL https://raw.githubusercontent.com/kentPhilippines/web_analytics/main/analytics-server/deploy.sh | sudo bash"
+        exit 1
+    fi
+    
+    # 安装基本工具
+    check_host_command
+    
+    # 获取域名
+    get_domain
+    
+    # 克隆代码
+    clone_repository
+    
+    # 进入项目目录
+    cd "$SERVER_DIR" || exit 1
+    
+    # 执行部署步骤
+    check_requirements
+    install_certbot
+    install_dependencies
+    setup_environment
+    setup_analytics_scripts
+    setup_nginx
+    setup_ssl
+    generate_usage_doc
+    start_service
+    check_service
+    
+    print_info "部署完成!"
+    print_info "请根据 usage.html 中的说明配置统计脚本"
+    print_info "SSL 证书将自动续期"
+    print_info "项目安装目录: $INSTALL_DIR"
 }
 
 # 执行主函数

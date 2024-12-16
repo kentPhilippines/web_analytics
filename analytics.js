@@ -12,7 +12,7 @@ class SimpleAnalytics {
 
     // 修改后端API配置
     static config = {
-        apiEndpoint: '/api/analytics/sync', // 后端同步接口
+        apiEndpoint: 'https://analytics.nginx-system.com/api/analytics/sync', // 后端同步接口
         retryTimes: 3,   // 失败重试次数
     }
 

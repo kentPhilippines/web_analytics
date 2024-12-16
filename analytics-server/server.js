@@ -57,48 +57,21 @@ app.use(express.json());
 // 配置 CORS
 const corsOptions = {
     origin: '*',
-    methods: '*',                // 允许所有方法
-    allowedHeaders: [           // 明确列出所有需要的请求头
-        'Content-Type',
-        'Authorization',
-        'X-Requested-With',
-        'Referer',
-        'sec-ch-ua',
-        'sec-ch-ua-mobile',
-        'sec-ch-ua-platform',
-        'User-Agent',
-        'Cache-Control',
-        'Accept',
-        'Origin',
-        'Accept-Language',
-        'Accept-Encoding'
-    ],
-    exposedHeaders: '*',         // 允许所有响应头
+    methods: '*',
+    allowedHeaders: '*',  // 改回允许所有头部
+    exposedHeaders: '*',
     credentials: true,
     maxAge: 86400,
-    preflightContinue: true
+    preflightContinue: false  // 改为 false，让 cors 中间件处理预检请求
 };
 
 app.use(cors(corsOptions));
 
-// 全局中间件添加 CORS 头
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', '*');
-    res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(', '));
-    res.header('Access-Control-Expose-Headers', '*');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    // 处理 OPTIONS 请求
-    if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-    } else {
-        next();
-    }
-});
+// 移除全局 CORS 中间件，避免重复设置头部
+// app.use((req, res, next) => { ... });
 
-// 特别为 /api/analytics/sync 配置 CORS
-app.options('/api/analytics/sync', cors(corsOptions)); // 启用 CORS 预检请求
+// 修改 API 路由的 CORS 配置
+app.options('/api/analytics/sync', cors(corsOptions));
 app.post('/api/analytics/sync', cors(corsOptions), async (req, res) => {
     try {
         const visit = req.body;
@@ -120,6 +93,7 @@ app.post('/api/analytics/sync', cors(corsOptions), async (req, res) => {
 
         stmt.finalize();
         
+        // 不需要手动设置 CORS 头部，让 cors 中间件处理
         res.status(200).json({ success: true });
     } catch (error) {
         console.error('Error saving visit:', error);

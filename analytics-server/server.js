@@ -58,7 +58,21 @@ app.use(express.json());
 const corsOptions = {
     origin: '*',
     methods: '*',                // 允许所有方法
-    allowedHeaders: '*',         // 允许所有头部
+    allowedHeaders: [           // 明确列出所有需要的请求头
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'Referer',
+        'sec-ch-ua',
+        'sec-ch-ua-mobile',
+        'sec-ch-ua-platform',
+        'User-Agent',
+        'Cache-Control',
+        'Accept',
+        'Origin',
+        'Accept-Language',
+        'Accept-Encoding'
+    ],
     exposedHeaders: '*',         // 允许所有响应头
     credentials: true,
     maxAge: 86400,
@@ -71,7 +85,7 @@ app.use(cors(corsOptions));
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', '*');
-    res.header('Access-Control-Allow-Headers', '*');
+    res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(', '));
     res.header('Access-Control-Expose-Headers', '*');
     res.header('Access-Control-Allow-Credentials', 'true');
     

@@ -55,17 +55,35 @@ app.use(compression()); // 启用 gzip 压缩
 app.use(express.json());
 
 // 配置 CORS
-app.use(cors({
-    origin: '*', // 允许所有来源
-    methods: ['GET', 'POST'], // 允许的 HTTP 方法
-    allowedHeaders: ['Content-Type', 'Authorization'], // 允许的请求头
-    credentials: true, // 允许发送凭证
-    maxAge: 86400 // CORS 预检请求的缓存时间（24小时）
-}));
+const corsOptions = {
+    origin: '*',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
+    maxAge: 86400,
+    preflightContinue: true
+};
+
+app.use(cors(corsOptions));
+
+// 全局中间件添加 CORS 头
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    // 处理 OPTIONS 请求
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
 
 // 特别为 /api/analytics/sync 配置 CORS
-app.options('/api/analytics/sync', cors()); // 启用 CORS 预检请求
-app.post('/api/analytics/sync', cors(), async (req, res) => {
+app.options('/api/analytics/sync', cors(corsOptions)); // 启用 CORS 预检请求
+app.post('/api/analytics/sync', cors(corsOptions), async (req, res) => {
     try {
         const visit = req.body;
         
@@ -85,11 +103,6 @@ app.post('/api/analytics/sync', cors(), async (req, res) => {
         );
 
         stmt.finalize();
-        
-        // 设置 CORS 响应头
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Methods', 'POST');
-        res.header('Access-Control-Allow-Headers', 'Content-Type');
         
         res.status(200).json({ success: true });
     } catch (error) {
@@ -212,6 +225,24 @@ process.on('SIGINT', () => {
         }
         process.exit(0);
     });
+});
+
+// 在现有的中间件配置后添加
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 添加根路由，重定向到统计面板
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 添加使用说明路由
+app.get('/usage', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'usage.html'));
+});
+
+// 添加 404 处理
+app.use((req, res) => {
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
 // 启动服务器

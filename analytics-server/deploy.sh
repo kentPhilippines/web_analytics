@@ -196,11 +196,35 @@ setup_environment() {
     print_info "配置环境..."
     
     # 创建必要的目录
-    mkdir -p logs
+    mkdir -p "$SERVER_DIR/logs"
+    mkdir -p "$PUBLIC_DIR"
+    mkdir -p "$STATIC_DIR"
     
     # 设置环境变量
     export PORT=${PORT:-3000}
     export NODE_ENV=${NODE_ENV:-production}
+
+    # 创建 404 页面
+    cat > "$PUBLIC_DIR/404.html" << EOF
+<!DOCTYPE html>
+<html>
+<head>
+    <title>404 - 页面未找到</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        h1 { color: #333; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>404 - 页面未找到</h1>
+    <p>抱歉，您请求的页面不存在。</p>
+    <p><a href="/">返回首页</a> | <a href="/usage">查看使用说明</a></p>
+</body>
+</html>
+EOF
 }
 
 # 配置统计脚本
@@ -240,7 +264,7 @@ setup_ssl() {
     print_info "配置 SSL 证书..."
     
     # 检查域名解析
-    print_info "检查域���解析..."
+    print_info "检查域名解析..."
     if ! host "$DOMAIN" &> /dev/null; then
         print_error "域名 $DOMAIN 解析失败"
         print_error "请确保域名已正确解析到此服务器"
@@ -267,6 +291,23 @@ server {
     listen 80;
     server_name ${DOMAIN};
 
+    # 添加跨域头部
+    add_header 'Access-Control-Allow-Origin' '*' always;
+    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+    add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+    add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+
+    # 处理 OPTIONS 请求
+    if (\$request_method = 'OPTIONS') {
+        add_header 'Access-Control-Allow-Origin' '*';
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
+        add_header 'Access-Control-Max-Age' 1728000;
+        add_header 'Content-Type' 'text/plain; charset=utf-8';
+        add_header 'Content-Length' 0;
+        return 204;
+    }
+
     # SSL 配置会由 certbot 自动添加
 
     location / {
@@ -279,6 +320,12 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+
+        # 添加跨域头部
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
     }
 
     # 静态文件缓存配置
@@ -286,6 +333,12 @@ server {
         alias ${STATIC_DIR}/;
         expires 30d;
         add_header Cache-Control "public, no-transform";
+        
+        # 添加跨域头部
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
     }
 
     # 禁止访问 .git 和其他敏感目录
@@ -320,8 +373,18 @@ generate_usage_doc() {
 <head>
     <title>统计脚本使用说明</title>
     <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .nav { margin-bottom: 20px; }
+        .nav a { color: #007bff; text-decoration: none; margin-right: 15px; }
+        .nav a:hover { text-decoration: underline; }
+    </style>
 </head>
 <body>
+    <div class="nav">
+        <a href="/">返回统计面板</a>
+    </div>
     <h1>统计脚本使用说明</h1>
     <h2>安装方法</h2>
     <p>在需要统计的页面添加以下代码：</p>
@@ -435,7 +498,7 @@ main() {
     print_info "部署完成!"
     print_info "请根据 usage.html 中的说明配置统计脚本"
     print_info "SSL 证书将自动续期"
-    print_info "项目安装目录: $INSTALL_DIR"
+    print_info "项目安装���录: $INSTALL_DIR"
 }
 
 # 执行主函数

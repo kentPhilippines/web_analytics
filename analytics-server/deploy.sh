@@ -327,44 +327,13 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-
-        # 简化 CORS 配置
-        add_header 'Access-Control-Allow-Origin' '*' always;
-        add_header 'Access-Control-Allow-Methods' '*' always;
-        add_header 'Access-Control-Allow-Headers' '*' always;
-        add_header 'Access-Control-Expose-Headers' '*' always;
-
-        # OPTIONS 请求处理
-        if (\$request_method = 'OPTIONS') {
-            add_header 'Access-Control-Allow-Origin' '*';
-            add_header 'Access-Control-Allow-Methods' '*';
-            add_header 'Access-Control-Allow-Headers' '*';
-            add_header 'Access-Control-Max-Age' 1728000;
-            add_header 'Content-Type' 'text/plain charset=UTF-8';
-            add_header 'Content-Length' 0;
-            return 204;
-        }
     }
 
     # 静态文件缓存配置
     location /static/ {
-        if (\$request_method = 'OPTIONS') {
-            add_header 'Access-Control-Allow-Origin' '*';
-            add_header 'Access-Control-Allow-Methods' '*';  # 允许所有方法
-            add_header 'Access-Control-Allow-Headers' '*';  # 允许所有头部
-            add_header 'Access-Control-Max-Age' 1728000;
-            add_header 'Content-Type' 'text/plain charset=UTF-8';
-            add_header 'Content-Length' 0;
-            return 204;
-        }
-
         alias ${STATIC_DIR}/;
         expires 30d;
         add_header Cache-Control "public, no-transform";
-        add_header 'Access-Control-Allow-Origin' '*' always;
-        add_header 'Access-Control-Allow-Methods' '*' always;  # 允许所有方法
-        add_header 'Access-Control-Allow-Headers' '*' always;  # 允许所有头部
-        add_header 'Access-Control-Expose-Headers' '*' always; # 允许所有响应头
     }
 
     # 禁止访问 .git 和其他敏感目录

@@ -5,13 +5,130 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# 定义目录
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 定义项目信息
+REPO_URL="https://github.com/kentPhilippines/web_analytics.git"
+INSTALL_DIR="/opt/web_analytics"
+SCRIPT_DIR="$INSTALL_DIR/analytics-server"
 PUBLIC_DIR="$SCRIPT_DIR/public"
 STATIC_DIR="$PUBLIC_DIR/static"
-
-# 添加域名变量
 DOMAIN=""
+PORT=3000
+
+# 检查是否已安装 host 命令
+check_host_command() {
+    if ! command -v host &> /dev/null; then
+        print_info "安装 host 命令..."
+        if command -v apt &> /dev/null; then
+            sudo apt update
+            sudo apt install -y bind9-host
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y bind-utils
+        else
+            print_error "无法安装 host 命令，请手动安装"
+            exit 1
+        fi
+    fi
+}
+
+# 创建必要的目录
+create_directories() {
+    print_info "创建必要的目录..."
+    sudo mkdir -p "$INSTALL_DIR"
+    sudo mkdir -p "$PUBLIC_DIR"
+    sudo mkdir -p "$STATIC_DIR"
+    sudo mkdir -p "$SCRIPT_DIR/logs"
+    
+    # 设置目录权限
+    sudo chown -R $(whoami):$(whoami) "$INSTALL_DIR"
+}
+
+# 修改 clone_repository 函数
+clone_repository() {
+    print_info "克隆项目代码..."
+    
+    # 检查 git 是否安装
+    if ! command -v git &> /dev/null; then
+        print_info "安装 git..."
+        if command -v apt &> /dev/null; then
+            sudo apt update
+            sudo apt install -y git
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y git
+        else
+            print_error "无法安装 git，请手动安装"
+            exit 1
+        fi
+    fi
+    
+    # 如果目录已存在，先备份
+    if [ -d "$INSTALL_DIR" ]; then
+        BACKUP_DIR="${INSTALL_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+        print_info "备份现有代码到 $BACKUP_DIR"
+        sudo mv "$INSTALL_DIR" "$BACKUP_DIR"
+    fi
+    
+    # 创建目录结构
+    create_directories
+    
+    # 克隆代码
+    print_info "从 $REPO_URL 克隆代码..."
+    if ! git clone "$REPO_URL" "$INSTALL_DIR"; then
+        print_error "代码克隆失败"
+        exit 1
+    fi
+    
+    print_info "代码克隆成功"
+}
+
+# 修改主函数
+main() {
+    print_info "开始部署统计服务..."
+    
+    # 检查 root 权限
+    if [ "$EUID" -ne 0 ]; then
+        print_error "请使用 root 权限运行此脚本"
+        print_info "使用: curl -sSL https://raw.githubusercontent.com/kentPhilippines/web_analytics/main/analytics-server/deploy.sh | sudo bash"
+        exit 1
+    fi
+    
+    # 安装基本工具
+    check_host_command
+    
+    # 获取域名
+    get_domain
+    
+    # 克隆代码
+    clone_repository
+    
+    # 进入项目目录
+    cd "$SCRIPT_DIR" || exit 1
+    
+    # 执行部署步骤
+    check_requirements
+    install_certbot
+    install_dependencies
+    setup_environment
+    setup_analytics_scripts
+    setup_nginx
+    setup_ssl
+    generate_usage_doc
+    start_service
+    check_service
+    
+    print_info "部署完成!"
+    print_info "请根据 usage.html 中的说明配置统计脚本"
+    print_info "SSL 证书将自动续期"
+    print_info "项目安装目录: $INSTALL_DIR"
+}
+
+# 打印带颜色的信息
+print_info() {
+    echo -e "${GREEN}[INFO] $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR] $1${NC}"
+}
 
 # 添加域名输入函数
 get_domain() {
@@ -28,15 +145,6 @@ get_domain() {
             print_error "域名不能为空"
         fi
     done
-}
-
-# 打印带颜色的信息
-print_info() {
-    echo -e "${GREEN}[INFO] $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR] $1${NC}"
 }
 
 # 检查必要的命令是否存在
@@ -293,79 +401,6 @@ check_service() {
         print_error "服务可能未正常运行，请检查日志"
         pm2 logs analytics-server --lines 20
     fi
-}
-
-# 添加克隆代码函数
-clone_repository() {
-    print_info "克隆项目代码..."
-    
-    # 检查 git 是否安装
-    if ! command -v git &> /dev/null; then
-        print_info "安装 git..."
-        if command -v apt &> /dev/null; then
-            sudo apt update
-            sudo apt install -y git
-        elif command -v yum &> /dev/null; then
-            sudo yum install -y git
-        else
-            print_error "无法安装 git，请手动安装"
-            exit 1
-        fi
-    fi
-    
-    # 如果目录已存在，先备份
-    if [ -d "$INSTALL_DIR" ]; then
-        BACKUP_DIR="${INSTALL_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
-        print_info "备份现有代码到 $BACKUP_DIR"
-        mv "$INSTALL_DIR" "$BACKUP_DIR"
-    fi
-    
-    # 克隆代码
-    print_info "从 $REPO_URL 克隆代码..."
-    if ! git clone "$REPO_URL" "$INSTALL_DIR"; then
-        print_error "代码克隆失败"
-        exit 1
-    fi
-    
-    print_info "代码克隆成功"
-}
-
-# 修改主函数
-main() {
-    print_info "开始部署统计服务..."
-    
-    # 检查 root 权限
-    if [ "$EUID" -ne 0 ]; then
-        print_error "请使用 root 权限运行此脚本"
-        print_info "使用: curl -sSL https://raw.githubusercontent.com/kentPhilippines/web_analytics/main/analytics-server/deploy.sh | sudo bash"
-        exit 1
-    fi
-    
-    # 获取域名
-    get_domain
-    
-    # 克隆代码
-    clone_repository
-    
-    # 进入项目目录
-    cd "$SCRIPT_DIR" || exit 1
-    
-    # 执行部署步骤
-    check_requirements
-    install_certbot
-    install_dependencies
-    setup_environment
-    setup_analytics_scripts
-    setup_nginx
-    setup_ssl
-    generate_usage_doc
-    start_service
-    check_service
-    
-    print_info "部署完成!"
-    print_info "请根据 usage.html 中的说明配置统计脚本"
-    print_info "SSL 证书将自动续期"
-    print_info "项目安装目录: $INSTALL_DIR"
 }
 
 # 执行主函数

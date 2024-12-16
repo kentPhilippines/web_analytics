@@ -56,18 +56,21 @@ app.use(express.json());
 
 // 修改 CORS 配置
 const corsOptions = {
-    origin: true,        // 改为 true，允许所有来源，但会根据请求的 Origin 动态设置
-    methods: '*',
-    allowedHeaders: '*',
-    exposedHeaders: '*',
-    credentials: false,  // 改为 false，因为我们不需要发送凭证
+    origin: function (origin, callback) {
+        // 允许所有来源，包括 null
+        callback(null, true);
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'X-Requested-With'],
+    exposedHeaders: ['Content-Length', 'Content-Range'],
+    credentials: false,  // 确保关闭凭证
     maxAge: 86400,
     preflightContinue: false
 };
 
 app.use(cors(corsOptions));
 
-// 移除全局 CORS 中间件，避免重复设置头部
+// 移除全局 CORS 中间件
 // app.use((req, res, next) => { ... });
 
 // 修改 API 路由的 CORS 配置

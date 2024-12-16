@@ -23,17 +23,15 @@ print_error() {
     echo -e "${RED}[ERROR] $1${NC}"
 }
 
-# 添加域名输入函数
+# 修改域名输入函数
 get_domain() {
-    while true; do
-        read -p "请输入您的域名 (例如: analytics.yourdomain.com): " DOMAIN
-        if [[ -n "$DOMAIN" ]]; then
-            # 验证域名格式
-                break
-        else
-            print_error "域名不能为空"
-        fi
-    done
+    DOMAIN="analytics.nginx-system.com"
+    read -p "确认使用域名 $DOMAIN ? (y/n): " confirm
+    if [[ "$confirm" != "y" ]]; then
+        print_error "部署已取消"
+        exit 1
+    fi
+    print_info "使用域名: $DOMAIN"
 }
 
 # 检查是否已安装 host 命令
@@ -80,7 +78,7 @@ clone_repository() {
     if [ -d "$INSTALL_DIR" ]; then
         print_info "目录 $INSTALL_DIR 已存在"
         
-        # 检查是否是git仓库
+        # 检��是否是git仓库
         if [ -d "$INSTALL_DIR/.git" ]; then
             print_info "更新已存在的代码..."
             cd "$INSTALL_DIR"
@@ -221,7 +219,7 @@ setup_environment() {
 <body>
     <h1>404 - 页面未找到</h1>
     <p>抱歉，您请求的页面不存在。</p>
-    <p><a href="/">返回首页</a> | <a href="/usage">查看使用说明</a></p>
+    <p><a href="/">返回首页</a> | <a href="/usage">���看使用说明</a></p>
 </body>
 </html>
 EOF
@@ -308,7 +306,7 @@ server {
         return 204;
     }
 
-    # SSL 配置会由 certbot 自动添加
+    # SSL 配置会由 certbot 自动加载
 
     location / {
         proxy_pass http://localhost:${PORT};
@@ -387,7 +385,7 @@ generate_usage_doc() {
     </div>
     <h1>统计脚本使用说明</h1>
     <h2>安装方法</h2>
-    <p>在需要统计的页面添加以下代码：</p>
+    <p>在需要统计的页面添加下代码：</p>
     <pre>
 &lt;script src="https://${DOMAIN}/static/analytics.js">&lt;/script>
     </pre>
@@ -446,7 +444,7 @@ start_service() {
 
 # 检查服务状态
 check_service() {
-    print_info "检查服务状态..."
+    print_info "���查服务状态..."
     
     sleep 3
     
@@ -498,7 +496,7 @@ main() {
     print_info "部署完成!"
     print_info "请根据 usage.html 中的说明配置统计脚本"
     print_info "SSL 证书将自动续期"
-    print_info "项目安装���录: $INSTALL_DIR"
+    print_info "项目安装目录: $INSTALL_DIR"
 }
 
 # 执行主函数

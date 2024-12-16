@@ -78,7 +78,7 @@ clone_repository() {
     if [ -d "$INSTALL_DIR" ]; then
         print_info "目录 $INSTALL_DIR 已存在"
         
-        # 检��是否是git仓库
+        # 检查是否是git仓库
         if [ -d "$INSTALL_DIR/.git" ]; then
             print_info "更新已存在的代码..."
             cd "$INSTALL_DIR"
@@ -219,7 +219,7 @@ setup_environment() {
 <body>
     <h1>404 - 页面未找到</h1>
     <p>抱歉，您请求的页面不存在。</p>
-    <p><a href="/">返回首页</a> | <a href="/usage">���看使用说明</a></p>
+    <p><a href="/">返回首页</a> | <a href="/usage">查看使用说明</a></p>
 </body>
 </html>
 EOF
@@ -285,28 +285,30 @@ setup_nginx() {
     
     # 创建 Nginx 配置文件
     sudo cat > /etc/nginx/conf.d/analytics.conf << EOF
+# CORS 预设配置
+map \$request_method \$cors_method {
+    OPTIONS 11;
+    GET 1;
+    POST 1;
+    default 0;
+}
+
 server {
     listen 80;
     server_name ${DOMAIN};
 
-    # 添加跨域头部
-    add_header 'Access-Control-Allow-Origin' '*' always;
-    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-    add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
-    add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+    # SSL 配置会由 certbot 自动加载
 
-    # 处理 OPTIONS 请求
-    if (\$request_method = 'OPTIONS') {
+    # CORS 预检请求处理
+    if (\$cors_method = 11) {
         add_header 'Access-Control-Allow-Origin' '*';
         add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
         add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
         add_header 'Access-Control-Max-Age' 1728000;
-        add_header 'Content-Type' 'text/plain; charset=utf-8';
+        add_header 'Content-Type' 'text/plain charset=UTF-8';
         add_header 'Content-Length' 0;
         return 204;
     }
-
-    # SSL 配置会由 certbot 自动加载
 
     location / {
         proxy_pass http://localhost:${PORT};
@@ -319,7 +321,23 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
 
-        # 添加跨域头部
+        # CORS 头部
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+    }
+
+    # API 路径特别配置
+    location /api/ {
+        proxy_pass http://localhost:${PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+
+        # CORS 头部
         add_header 'Access-Control-Allow-Origin' '*' always;
         add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
         add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
@@ -332,7 +350,7 @@ server {
         expires 30d;
         add_header Cache-Control "public, no-transform";
         
-        # 添加跨域头部
+        # CORS 头部
         add_header 'Access-Control-Allow-Origin' '*' always;
         add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
         add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
@@ -444,7 +462,7 @@ start_service() {
 
 # 检查服务状态
 check_service() {
-    print_info "���查服务状态..."
+    print_info "检查服务状态..."
     
     sleep 3
     
@@ -493,7 +511,7 @@ main() {
     start_service
     check_service
     
-    print_info "部署完成!"
+    print_info "部署���成!"
     print_info "请根据 usage.html 中的说明配置统计脚本"
     print_info "SSL 证书将自动续期"
     print_info "项目安装目录: $INSTALL_DIR"

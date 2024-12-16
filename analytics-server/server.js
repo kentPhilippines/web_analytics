@@ -54,15 +54,15 @@ const db = initializeDatabase();
 app.use(compression()); // 启用 gzip 压缩
 app.use(express.json());
 
-// 配置 CORS
+// 修改 CORS 配置
 const corsOptions = {
-    origin: '*',
+    origin: true,        // 改为 true，允许所有来源，但会根据请求的 Origin 动态设置
     methods: '*',
-    allowedHeaders: '*',  // 改回允许所有头部
+    allowedHeaders: '*',
     exposedHeaders: '*',
-    credentials: true,
+    credentials: false,  // 改为 false，因为我们不需要发送凭证
     maxAge: 86400,
-    preflightContinue: false  // 改为 false，让 cors 中间件处理预检请求
+    preflightContinue: false
 };
 
 app.use(cors(corsOptions));

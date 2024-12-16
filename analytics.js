@@ -33,7 +33,7 @@ class SimpleAnalytics {
                 }
             }
 
-            // 如果 sendBeacon 不可用或失败，使用 fetch 的非阻塞方式
+            // ��果 sendBeacon 不可用或失败，使用 fetch 的非阻塞方式
             fetch(SimpleAnalytics.config.apiEndpoint, {
                 method: 'POST',
                 headers: {
@@ -42,6 +42,7 @@ class SimpleAnalytics {
                 body: JSON.stringify(visitData),
                 // 确保请求不阻塞
                 keepalive: true,
+                credentials: 'omit',
                 // 设置较短的超时时间
                 signal: AbortSignal.timeout(2000)
             }).then(() => {
@@ -285,7 +286,7 @@ class SimpleAnalytics {
     }
 }
 
-// 修改初始化方式，确保不阻塞页面加载
+// 修改初始化方式，确���不阻塞页面加载
 window.addEventListener('load', () => {
     setTimeout(() => {
         try {
